@@ -6,7 +6,17 @@ TEST_PORT = 6380
 describe 'Rubbis', :acceptance do
   it 'responds to ping' do
     with_server do
-      expect(client.ping).to eq "PONG"
+      c = client
+      c.without_reconnect do
+        expect(c.ping).to eq "PONG"
+        expect(c.ping).to eq "PONG"
+      end
+    end
+  end
+
+  it 'echos messages' do
+    with_server do
+      expect(client.echo("hello\nthere")).to eq "hello\nthere"
     end
   end
 
