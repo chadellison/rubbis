@@ -6,7 +6,7 @@ TEST_PORT = 6380
 describe 'Rubbis', :acceptance do
   it 'responds to ping' do
     with_server do
-      expect(client.ping).to eq "OK"
+      expect(client.ping).to eq "PONG"
     end
   end
 

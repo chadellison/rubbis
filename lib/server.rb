@@ -17,7 +17,7 @@ module Rubbis
     end
 
     def handle_client(client)
-      client.write "+OK\r\n"
+      client.write "+PONG\r\n"
     ensure
       client.close
     end
