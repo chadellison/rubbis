@@ -20,6 +20,13 @@ describe 'Rubbis', :acceptance do
     end
   end
 
+  it 'supports multiple clients at a time' do
+    with_server do
+      expect(client.echo("hello\nthere")).to eq "hello\nthere"
+      expect(client.echo("hello\nthere")).to eq "hello\nthere"
+    end
+  end
+
   def client
     Redis.new(host: 'localhost', port: TEST_PORT)
   end
