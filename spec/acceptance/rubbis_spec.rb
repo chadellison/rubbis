@@ -32,6 +32,7 @@ describe 'Rubbis', :acceptance do
   end
 
   def with_server
+    server = nil
     server_thread = Thread.new do
       server = Rubbis::Server.new(TEST_PORT)
       server.listen
@@ -41,7 +42,7 @@ describe 'Rubbis', :acceptance do
 
     yield
   ensure
-    Thread.kill(server_thread) if server_thread
+    server.shutdown if server
   end
 
   def wait_for_open_port(port)
