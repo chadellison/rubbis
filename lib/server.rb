@@ -14,7 +14,7 @@ module Rubbis
       server = TCPServer.new(port)
       readable << server
       loop do
-        ready_to_read, _ = IO.select(readable + clients.keys)
+        ready_to_read = IO.select(readable + clients.keys).first
 
         ready_to_read.each do |socket|
           case socket
@@ -52,7 +52,7 @@ module Rubbis
         @buffer = buffer[processed..-1]
 
         cmds.each do |cmd|
-          response = case cmd[0].downcase
+          response = case cmd[0].to_s.downcase
           when 'ping' then "+PONG\r\n"
           when 'echo' then "$#{cmd[1].length}\r\n#{cmd[1]}\r\n"
           end
@@ -76,7 +76,7 @@ module Rubbis
             n = header[1..-1].to_i
 
             result << n.times.map do
-              raise ProtocoError unless io.readpartial(1) == '$'
+              raise ProtocolError unless io.readpartial(1) == '$'
 
               length = safe_readline(io).to_i
               safe_readpartial(io, length).tap do
