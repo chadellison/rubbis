@@ -1,5 +1,5 @@
 require 'socket'
-require 'stringio'
+# require 'stringio'
 require 'rubbis/protocol'
 require 'rubbis/state'
 
@@ -51,78 +51,79 @@ module Rubbis
       end
     end
 
-    class Handler
-      attr_reader :client, :buffer
+  end
 
-      def initialize(socket)
-        @client = socket
-        @buffer = ''
-      end
+  class Handler
+    attr_reader :client, :buffer
 
-      def process!(state)
-        buffer << client.read_nonblock(1024)
+    def initialize(socket)
+      @client = socket
+      @buffer = ''
+    end
 
-        cmds, processed = unmarshal(buffer)
-        @buffer = buffer[processed..-1]
+    def process!(state)
+      buffer << client.read_nonblock(1024)
 
-        cmds.each do |cmd|
-          response = case cmd[0].to_s.downcase
-          when 'ping' then :pong
-          when 'echo' then cmd[1]
-          when 'set' then state.set(*cmd[1..-1])
-          when 'get' then state.get(*cmd[1..-1])
-          end
+      cmds, processed = unmarshal(buffer)
+      @buffer = buffer[processed..-1]
 
-          client.write Rubbis::Protocol.marshal(response)
+      cmds.each do |cmd|
+        response = case cmd[0].to_s.downcase
+        when 'ping' then :pong
+        when 'echo' then cmd[1]
+        when 'set' then state.set(*cmd[1..-1])
+        when 'get' then state.get(*cmd[1..-1])
         end
+
+        client.write Rubbis::Protocol.marshal(response)
       end
+    end
 
-      def unmarshal(data)
-        io = StringIO.new(data)
-        result = []
-        processed = 0
+    def unmarshal(data)
+      io = StringIO.new(data)
+      result = []
+      processed = 0
 
-        begin
-          loop do
-            header = safe_readline(io)
-            raise ProtocolError unless header[0] == '*'
+      begin
+        loop do
+          header = safe_readline(io)
+          raise ProtocolError unless header[0] == '*'
 
-            n = header[1..-1].to_i
+          n = header[1..-1].to_i
 
-            result << n.times.map do
-              raise ProtocolError unless io.readpartial(1) == '$'
+          result << n.times.map do
+            raise ProtocolError unless io.readpartial(1) == '$'
 
-              length = safe_readline(io).to_i
-              safe_readpartial(io, length).tap do
-                safe_readline(io)
-              end
+            length = safe_readline(io).to_i
+            safe_readpartial(io, length).tap do
+              safe_readline(io)
             end
-
-            processed = io.pos
           end
-        rescue ProtocolError
+
           processed = io.pos
-        rescue EOFError
-          # Incomplete command, ignore
         end
-
-        [result, processed]
+      rescue ProtocolError
+        processed = io.pos
+      rescue EOFError
+        # Incomplete command, ignore
       end
 
-      def safe_readline(io)
-        io.readline("\r\n").tap do |line|
-          raise EOFError unless line.end_with?("\r\n")
-        end
-      end
+      [result, processed]
+    end
 
-      def safe_readpartial(io, length)
-        io.readpartial(length).tap do |data|
-          raise EOFError unless data.length == length
-        end
+    def safe_readline(io)
+      io.readline("\r\n").tap do |line|
+        raise EOFError unless line.end_with?("\r\n")
       end
     end
 
-    class ProtocolError < RuntimeError
+    def safe_readpartial(io, length)
+      io.readpartial(length).tap do |data|
+        raise EOFError unless data.length == length
+      end
     end
+  end
+
+  class ProtocolError < RuntimeError
   end
 end

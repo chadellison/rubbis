@@ -4,6 +4,6 @@ port = ARGV.fetch(0, 6379)
 
 $LOAD_PATH.unshift File.expand_path('../../lib', __FILE__)
 
-require 'server'
+require 'rubbis/server'
 
 Rubbis::Server.new(port).listen
