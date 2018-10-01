@@ -27,6 +27,14 @@ describe 'Rubbis', :acceptance do
     end
   end
 
+  it 'gets and sets values' do
+    with_server do
+      expect(client.get('abc')).to be_nil
+      expect(client.set('abc', '123')).to eq 'OK'
+      expect(client.get('abc')).to eq '123'
+    end
+  end
+
   def client
     Redis.new(host: 'localhost', port: TEST_PORT)
   end
