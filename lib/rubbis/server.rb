@@ -1,5 +1,4 @@
 require 'socket'
-# require 'stringio'
 require 'rubbis/protocol'
 require 'rubbis/state'
 
@@ -71,11 +70,7 @@ module Rubbis
         response = case cmd[0].to_s.downcase
         when 'ping' then :pong
         when 'echo' then cmd[1]
-        when 'set' then state.set(*cmd[1..-1])
-        when 'get' then state.get(*cmd[1..-1])
-        when 'hset' then state.hset(*cmd[1..-1])
-        when 'hget' then state.hget(*cmd[1..-1])
-        when 'hmget' then state.hmget(*cmd[1..-1])
+        else state.apply_command(cmd)
         end
 
         client.write Rubbis::Protocol.marshal(response)

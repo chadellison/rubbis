@@ -3,13 +3,30 @@ module Rubbis
     def self.incorrect_args(cmd)
       new "wrong number of arguments for '#{cmd}' command"
     end
+
+    def self.unknown_cmd(cmd)
+      new "unknown command '#{cmd}'"
+    end
   end
 
   class State
-    attr_reader :data
-
     def initialize
       @data = {}
+    end
+
+    def self.valid_command?(cmd)
+      @valid_commands ||= Set.new(
+        public_instance_methods(false).map(&:to_s) - ['apply_command']
+      )
+      @valid_commands.include?(cmd)
+    end
+
+    def apply_command(cmd)
+      unless State.valid_command?(cmd[0])
+        return Error.unknown_cmd(cmd[0])
+      end
+
+      public_send *cmd
     end
 
     def set(*args)
@@ -44,5 +61,9 @@ module Rubbis
     def hmget(hash, *keys)
       data[hash].values_at(*keys)
     end
+
+    private
+
+    attr_reader :data
   end
 end
