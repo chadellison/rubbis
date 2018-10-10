@@ -6,6 +6,7 @@ module Rubbis
       when nil then "$-1\r\n"
       when String then "$#{ruby.length}\r\n#{ruby}\r\n"
       when Error then "-ERR #{ruby.message}\r\n"
+      when Array then "*#{ruby.length}\r\n#{ruby.map { |x| marshal(x) }.join }"
       else raise "Don't know how to marshal #{ruby}"
       end
     end
