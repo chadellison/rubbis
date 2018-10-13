@@ -41,6 +41,15 @@ describe Rubbis::State, :unit do
       expect(state.hset('myhash', 'def', '456')).to eq :ok
       expect(state.hmget('myhash', 'abc', 'def')).to eq ['123', '456']
     end
+
+    it 'returns error when not hash value' do
+      state.set('myhash', 'bogus')
+      expect(state.hmget('myhash', 'key')).to eq Rubbis::Error.type_error
+    end
+
+    it 'returns nil when empty' do
+      expect(state.hmget('myhash', 'key')).to eq [nil]
+    end
   end
 
   describe '#hincrby' do
