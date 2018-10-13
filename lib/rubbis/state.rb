@@ -1,3 +1,5 @@
+require 'set'
+
 module Rubbis
   Error = Struct.new(:message) do
     def self.incorrect_args(cmd)
