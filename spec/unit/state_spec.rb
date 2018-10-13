@@ -42,4 +42,11 @@ describe Rubbis::State, :unit do
       expect(state.hmget('myhash', 'abc', 'def')).to eq ['123', '456']
     end
   end
+
+  describe '#hincrby' do
+    it 'increments a counter stored in a hash' do
+      state.hset('myhash', 'abc', '123')
+      expect(state.hincrby('myhash', 'abc', '2')).to eq 125
+    end
+  end
 end
