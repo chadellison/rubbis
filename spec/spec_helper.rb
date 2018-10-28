@@ -35,6 +35,20 @@ module AcceptanceHelpers
   end
 end
 
+class FakeClock
+  def initialize()
+    @t = 0
+  end
+
+  def now
+    @t
+  end
+
+  def sleep(t)
+    @t += t
+  end
+end
+
 TEST_PORT = 6380
 RSpec.configure do |c|
   c.include AcceptanceHelpers, acceptance: true

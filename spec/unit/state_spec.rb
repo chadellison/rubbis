@@ -2,7 +2,26 @@ require 'spec_helper'
 require 'rubbis/state'
 
 describe Rubbis::State, :unit do
-  let(:state) { described_class.new }
+  let(:clock) { FakeClock.new }
+  let(:state) { described_class.new(clock) }
+
+  shared_examples 'passive expiry' do |set_cmd, get_cmd|
+    it 'expires a key passively' do
+      key = 'abc'
+
+      set_cmd.(state, key)
+      state.expire('abc', '1')
+
+      clock.sleep 0.9
+      get_cmd.(state, key)
+      expect(state.exists('abc')).to eq 1
+
+      clock.sleep 0.1
+      get_cmd.(state, key)
+      expect(state.exists('abc')).to eq 0
+    end
+  end
+
   describe '#set' do
     it 'sets a value' do
       expect(state.set('abc', '123')).to eq :ok
@@ -50,12 +69,40 @@ describe Rubbis::State, :unit do
     it 'returns nil when empty' do
       expect(state.hmget('myhash', 'key')).to eq [nil]
     end
+
+    include_examples 'passive expiry',
+      -> s, k { s.hset(k, 'abc', '123') },
+      -> s, k { s.hmget(k, 'abc') }
+  end
+
+  describe '#hget' do
+    include_examples 'passive expiry',
+      -> s, k { s.hset(k, 'abc', '123') },
+      -> s, k { s.hget(k, 'abc') }
   end
 
   describe '#hincrby' do
     it 'increments a counter stored in a hash' do
       state.hset('myhash', 'abc', '123')
       expect(state.hincrby('myhash', 'abc', '2')).to eq 125
+    end
+
+    include_examples 'passive expiry',
+      -> s, k { s.hset(k, 'abc', '123') },
+      -> s, k { s.hincrby(k, 'abc', '1') }
+  end
+
+  describe '#get' do
+    include_examples 'passive expiry',
+      -> s, k { s.set(k, '123') },
+      -> s, k { s.get(k) }
+  end
+
+  describe '#exists' do
+    it 'returns the number of keys existing' do
+      expect(state.exists('abc')).to eq 0
+      state.set('abc', '123')
+      expect(state.exists('abc')).to eq 1
     end
   end
 end
