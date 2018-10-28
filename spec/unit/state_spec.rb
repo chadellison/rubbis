@@ -105,4 +105,12 @@ describe Rubbis::State, :unit do
       expect(state.exists('abc')).to eq 1
     end
   end
+
+  describe '#keys' do
+    it 'returns all keys in the database for *' do
+      state.set('abc', '123')
+      state.set('def', '456')
+      expect(state.keys('*')).to eq(%w(abc def))
+    end
+  end
 end

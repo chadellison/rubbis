@@ -4,7 +4,7 @@ require 'rubbis/state'
 
 module Rubbis
   class Server
-    attr_reader :port, :shutdown_pipe, :data
+    attr_reader :port, :shutdown_pipe, :state, :clock
 
     class Clock
       def now
@@ -12,14 +12,15 @@ module Rubbis
       end
 
       def sleep(x)
-        ::Kernal.sleep x
+        ::Kernel.sleep x
       end
     end
 
     def initialize(port)
       @port = port
       @shutdown_pipe = IO.pipe
-      @state = State.new(Clock.new)
+      @clock = Clock.new
+      @state = State.new(@clock)
     end
 
     def shutdown
@@ -30,9 +31,21 @@ module Rubbis
       readable = []
       clients = {}
       running = true
+      timer_pipe = IO.pipe
       server = TCPServer.new(port)
       readable << server
       readable << shutdown_pipe[0]
+      readable << timer_pipe[0]
+
+      timer_thread = Thread.new do
+        begin
+          while running
+            clock.sleep(0.1)
+            timer_pipe[1].write('.')
+          end
+        rescue Errno::EPIPE
+        end
+      end
 
       while running
         ready_to_read = IO.select(readable + clients.keys).first
@@ -44,6 +57,8 @@ module Rubbis
             clients[child_socket] = Handler.new(child_socket)
           when shutdown_pipe[0]
             running = false
+          when timer_pipe[0]
+            state.expire_keys!
           else
             begin
               clients[socket].process!(@state)
@@ -55,11 +70,13 @@ module Rubbis
         end
       end
     ensure
+      running = false
       (readable + clients.keys).each do |socket|
         socket.close
       end
+      timer_pipe[0].close if timer_pipe
+      timer_thread.join if timer_thread
     end
-
   end
 
   class Handler
