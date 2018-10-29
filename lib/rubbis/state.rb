@@ -1,5 +1,4 @@
 require 'set'
-
 module Rubbis
   Error = Struct.new(:message) do
     def self.incorrect_args(cmd)
@@ -35,14 +34,6 @@ module Rubbis
       end
 
       public_send *cmd
-    end
-
-    def keys(pattern)
-      if pattern == '*'
-        data.keys
-      else
-        raise 'unimplemented'
-      end
     end
 
     def expire_keys!(n: 100, threshhold: 0.25, rng: Random.new)
@@ -127,6 +118,69 @@ module Rubbis
         1
       else
         0
+      end
+    end
+
+    def keys(pattern)
+      if pattern == '*'
+        data.keys
+      else
+        raise 'unimplemented'
+      end
+    end
+
+    def zadd(key, score, member)
+      value = get(key) || data[key] = ZSet.new
+
+      value.add(score.to_f, member)
+      1
+    end
+
+    def zrange(key, start, stop)
+      value = get(key)
+      if value
+        value.range(start.to_i, stop.to_i)
+      else
+        []
+      end
+    end
+
+    def zrank(key, member)
+      value = get(key)
+
+      if value
+        value.rank(member)
+      end
+    end
+
+    def zscore(key, member)
+      value = get(key)
+
+      if value
+        value.score(member)
+      end
+    end
+
+    class ZSet
+      def initialize
+        @entries = []
+      end
+
+      def add(score, member)
+        @entries << [score, member]
+        @entries.sort!
+      end
+
+      def range(start, stop)
+        @entries[start..stop].map { |x| x[1] }
+      end
+
+      def rank(entry)
+        @entries.index { |x| x[1] == entry }
+      end
+
+      def score(entry)
+        @entries.detect { |x| x[1] == entry }[0]
       end
     end
 
