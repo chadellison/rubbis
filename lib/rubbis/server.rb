@@ -80,11 +80,50 @@ module Rubbis
   end
 
   class Handler
+    class Transaction
+      def initialize
+        @active = false
+        @dirty = false
+        @buffer = []
+      end
+
+      def start!
+        raise if @active
+        @active = true
+      end
+
+      def active?
+        @active
+      end
+
+      def dirty!
+        @dirty = true
+      end
+
+      def dirty?
+        @dirty
+      end
+
+      def queue(cmd)
+        raise unless @active
+        @buffer << cmd
+      end
+
+      def buffer
+        @buffer
+      end
+    end
+
     attr_reader :client, :buffer
 
     def initialize(socket)
       @client = socket
       @buffer = ''
+      reset_tx!
+    end
+
+    def reset_tx!
+      @tx = Transaction.new
     end
 
     def process!(state)
@@ -94,13 +133,35 @@ module Rubbis
       @buffer = buffer[processed..-1]
 
       cmds.each do |cmd|
-        response = case cmd[0].to_s.downcase
-        when 'ping' then :pong
-        when 'echo' then cmd[1]
-        else state.apply_command(cmd)
+        response = if @tx.active?
+          case cmd[0].downcase
+          when 'exec'
+            result = @tx.buffer.map do |cmd|
+              dispatch(state, cmd)
+            end unless @tx.dirty?
+            reset_tx!
+            result
+          else
+            @tx.queue(cmd)
+            :queued
+          end
+        else
+          dispatch(state, cmd)
         end
 
         client.write Rubbis::Protocol.marshal(response)
+      end
+    end
+
+    def dispatch(state, cmd)
+      case cmd[0].to_s.downcase
+      when 'ping' then :pong
+      when 'echo' then cmd[1]
+      when 'multi' then @tx.start!; :ok
+      when 'watch' then
+        current_tx = @tx
+        state.watch(cmd[1]) { @tx.dirty! if current_tx == @tx }
+      else state.apply_command(cmd)
       end
     end
 

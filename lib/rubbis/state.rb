@@ -19,11 +19,12 @@ module Rubbis
       @data = {}
       @expires = {}
       @clock = clock
+      @watches = {}
     end
 
     def self.valid_command?(cmd)
       @valid_commands ||= Set.new(
-        public_instance_methods(false).map(&:to_s) - ['apply_command']
+        public_instance_methods(false).map(&:to_s) - ['apply_command', 'watch']
       )
       @valid_commands.include?(cmd)
     end
@@ -34,6 +35,12 @@ module Rubbis
       end
 
       public_send *cmd
+    end
+
+    def watch(key, &block)
+      watches[key] ||= []
+      watches[key] << block if block
+      :ok
     end
 
     def expire_keys!(n: 100, threshhold: 0.25, rng: Random.new)
@@ -67,6 +74,7 @@ module Rubbis
       exists = data.has_key?(key)
 
       if (!nx && !xx) || (nx && !exists) || (xx && exists)
+        touch! key
         data[key] = value
         :ok
       end
@@ -217,6 +225,11 @@ module Rubbis
 
     private
 
-    attr_reader :data, :clock, :expires
+    def touch!(key)
+      ws = watches.delete(key) || []
+      ws.each(&:call)
+    end
+
+    attr_reader :data, :clock, :expires, :watches
   end
 end
